@@ -46,6 +46,17 @@ rules:
       runMatches: "--severity-threshold\\b|--compliance-threshold[= ]+(?:0*[1-9]|0*\\.\\d*[1-9])"
       unknownWhen: "--fail-threshold\\b|(?:^|\\s)-t[= ]+\\S"
 
+  # Polaris audit prints findings but exits 0 unless a failure threshold is set.
+  # Requiring the audit subcommand avoids Shopify's unrelated Polaris package.
+  - id: "polaris-rule"
+    name: "Polaris"
+    applyOn: ["Artifact.Name", "Job.Package", "Job.Run"]
+    categories: ["IaC Security"]
+    regex: "(?i)(?:^|[\\s;|&(])(?:\\./)?polaris\\s+audit(?:\\s|$)"
+    exitsZeroUnless:
+      runMatches: "--set-exit-code-on-danger(?:\\s|$)|--set-exit-code-below-score[= ]+(?:100|[1-9][0-9]?)(?:\\s|$)"
+      unknownWhen: "(?:^|\\s)(?:-c|--config)(?:[= ]|$)"
+
   # kube-score exits 1 on a critical finding by default, so it needs no
   # exitsZeroUnless. Only the score sub-command checks manifests; version,
   # help and completion check nothing.
