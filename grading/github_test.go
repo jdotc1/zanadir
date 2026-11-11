@@ -135,6 +135,29 @@ jobs:
 	}
 }
 
+// Polaris audits report findings without failing CI unless a failure threshold
+// is explicitly requested. A config file may alter the effective behavior.
+func TestPolarisAuditExitCodeGrades(t *testing.T) {
+	for run, expected := range map[string]Verdict{
+		"polaris audit --audit-path ./deploy":                             Advisory,
+		"polaris audit --helm-chart ./chart --helm-values values.yaml":    Advisory,
+		"polaris audit --audit-path ./deploy --set-exit-code-on-danger":   Enforcing,
+		"polaris audit --audit-path k8s/ --set-exit-code-below-score 90":  Enforcing,
+		"polaris audit --audit-path k8s/ --set-exit-code-below-score=100": Enforcing,
+		"polaris audit --audit-path ./deploy --config ./polaris.yaml":     Unknown,
+		"polaris audit --audit-path ./deploy -c ./polaris.yaml":           Unknown,
+	} {
+		verdicts := gradeFile(t, parser.NewGithubParser(), ".github/workflows/audit.yml", `
+on: pull_request
+jobs:
+  iac:
+    steps:
+      - run: `+run+`
+`)
+		assert.Equal(t, expected, verdicts["IaC Security"], run)
+	}
+}
+
 // pinact run changes workflow files by default, but --check, --diff and
 // --fix=false turn unpinned actions into a failing CI check.
 func TestPinactRunGradesOnlyCheckingModesAsEnforcing(t *testing.T) {
@@ -182,11 +205,11 @@ jobs:
 // Secretlint does not fail on findings when writing its report with --output.
 func TestSecretlintOutputGradesAdvisory(t *testing.T) {
 	for run, expected := range map[string]Verdict{
-		`npx secretlint "**/*"`:                                    Enforcing,
-		"secretlint --format sarif .":                                Enforcing,
+		`npx secretlint "**/*"`:                                          Enforcing,
+		"secretlint --format sarif .":                                    Enforcing,
 		`npx secretlint "**/*" --format sarif --output secretlint.sarif`: Advisory,
-		"secretlint --output=report.json .":                          Advisory,
-		"secretlint --output-format sarif .":                          Enforcing,
+		"secretlint --output=report.json .":                              Advisory,
+		"secretlint --output-format sarif .":                             Enforcing,
 	} {
 		t.Run(run, func(t *testing.T) {
 			verdicts := gradeFile(t, parser.NewGithubParser(), ".github/workflows/ci.yml", `
@@ -493,10 +516,9 @@ jobs:
 	}
 }
 
-
 func TestCSpellNoExitCodeGradesAdvisory(t *testing.T) {
 	for run, expected := range map[string]Verdict{
-		"npx cspell lint .":                 Enforcing,
+		"npx cspell lint .":                Enforcing,
 		"npx cspell lint --no-exit-code .": Advisory,
 	} {
 		verdicts := gradeFile(t, parser.NewGithubParser(), ".github/workflows/ci.yml", `
