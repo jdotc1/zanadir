@@ -61,6 +61,20 @@ func TestRuleRegexPrecision(t *testing.T) {
 			shouldNotMatch: []string{"secretlinter", "my-secretlint", "secretlint-wrapper", "mysecretlint"},
 		},
 		{
+			ruleID: "kingfisher-rule",
+			shouldMatch: []string{
+				"kingfisher scan .",
+				"kingfisher scan --git-history full .",
+				"docker run ghcr.io/mongodb/kingfisher scan /src",
+				"ghcr.io/mongodb/kingfisher",
+				"ghcr.io/mongodb/kingfisher:v1.0",
+			},
+			shouldNotMatch: []string{
+				"brew install kingfisher", "kingfisher --version", "kingfishers",
+				"my-kingfisher scan .", "kingfisher-installer",
+			},
+		},
+		{
 			ruleID: "github-action-benchmark-rule",
 			shouldMatch: []string{
 				"benchmark-action/github-action-benchmark@v1",
