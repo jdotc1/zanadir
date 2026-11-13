@@ -68,6 +68,17 @@ rules:
     categories: ["SAST"]
     regex: "(?i)\\bbrakeman\\b"
 
+  # Phoenix's Sobelow reports vulnerabilities without failing CI by default.
+  - id: "sobelow-rule"
+    name: "Sobelow"
+    applyOn: ["Artifact.Name", "Job.Package", "Job.Run"]
+    categories: ["SAST"]
+    regex: "(?i)\\bmix\\s+sobelow\\b"
+    exitsZeroUnless:
+      runMatches: "--exit(?:[= ]|$)"
+      unknownWhen: "--config(?:[= ]|$)"
+      configFiles: [".sobelow-conf"]
+
   # "snyk" alone is the SCA rule; only the code sub-command is SAST.
   - id: "snyk-code-rule"
     name: "Snyk Code"

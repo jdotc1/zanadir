@@ -150,6 +150,25 @@ jobs:
 	}
 }
 
+// Sobelow only fails CI on findings when explicitly configured to exit.
+func TestSobelowRequiresExitFlagToGate(t *testing.T) {
+	for run, expected := range map[string]Verdict{
+		"mix sobelow":                         Advisory,
+		"mix sobelow --exit":                  Enforcing,
+		"mix sobelow --exit medium --skip":    Enforcing,
+		"mix sobelow --config .sobelow-conf": Unknown,
+	} {
+		verdicts := gradeFile(t, parser.NewGithubParser(), ".github/workflows/ci.yml", `
+on: pull_request
+jobs:
+  security:
+    steps:
+      - run: `+run+`
+)
+		assert.Equal(t, expected, verdicts["SAST"], run)
+	}
+}
+
 // HTMLHint fails on findings by default; --warn keeps the linter but makes it
 // advisory because the command exits successfully.
 func TestHTMLHintWarnGradesAdvisory(t *testing.T) {

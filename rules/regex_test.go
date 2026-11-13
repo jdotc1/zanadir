@@ -36,6 +36,16 @@ func TestRuleRegexPrecision(t *testing.T) {
 		shouldNotMatch []string
 	}{
 		{
+			ruleID: "sobelow-rule",
+			shouldMatch: []string{
+				"mix sobelow --exit", "mix sobelow --exit medium --skip",
+				"mix sobelow --config", "mix sobelow",
+			},
+			shouldNotMatch: []string{
+				"mix credo", "mix deps.audit", "mix test", "mix sobelows",
+			},
+		},
+		{
 			ruleID: "kingfisher-rule",
 			shouldMatch: []string{
 				"kingfisher scan .", "kingfisher scan --git-history full .",
