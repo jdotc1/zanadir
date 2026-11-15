@@ -86,6 +86,24 @@ jobs:
 	assert.Equal(t, Advisory, verdicts["SAST"])
 }
 
+func TestGGShieldExitZeroMakesSecretScanningAdvisory(t *testing.T) {
+	for run, expected := range map[string]Verdict{
+		"ggshield secret scan repo .":                         Enforcing,
+		"ggshield secret scan repo . --exit-zero":             Advisory,
+		"GITGUARDIAN_EXIT_ZERO=1 ggshield secret scan repo .": Advisory,
+		"ggshield secret scan repo . --exit-zero-extra":       Enforcing,
+	} {
+		verdicts := gradeFile(t, parser.NewGithubParser(), ".github/workflows/secrets.yml", `
+on: pull_request
+jobs:
+  secrets:
+    steps:
+      - run: `+run+`
+`)
+		assert.Equal(t, expected, verdicts["Secrets Detection"], run)
+	}
+}
+
 // revive exits 0 on findings unless -set_exit_status is given, and a -config
 // file can set the exit code some other way.
 func TestReviveExitsZeroUnlessSetExitStatus(t *testing.T) {
