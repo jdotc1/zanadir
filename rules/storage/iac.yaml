@@ -11,6 +11,20 @@ rules:
         equals: "true"
         verdict: "advisory"
 
+  - id: "dockle-rule"
+    name: "Dockle"
+    applyOn: ["Artifact.Name", "Job.Package", "Job.Run"]
+    categories: ["IaC Security"]
+    regex: "(?i)(?:^|[\\s/])dockle(?:[:@][\\w.-]+)?(?:\\s|$)|(?:^|[\\s/])goodwithtech/dockle(?:-action)?(?:[:@][\\w.-]+)?(?:\\s|$)"
+    weakenedWhen:
+      - input: "exit-code"
+        equals: "0"
+        verdict: "advisory"
+    # The CLI reports findings without failing unless a nonzero exit code is set.
+    # The GitHub Action, unlike the CLI, fails by default.
+    exitsZeroUnless:
+      runMatches: "(?i)(?:--exit-code|-c)[= ]+0*[1-9][0-9]*(?:\\s|$)|\\bDOCKLE_EXIT_CODE=0*[1-9][0-9]*\\b"
+
   - id: "tfsec-rule"
     name: "tfsec"
     applyOn: ["Artifact.Name", "Job.Package", "Job.Run"]
