@@ -157,6 +157,41 @@ jobs:
 	}
 }
 
+func TestDockleCLIAndActionExitCodes(t *testing.T) {
+	for run, expected := range map[string]Verdict{
+		"dockle --input image.tar":                         Advisory,
+		"dockle --exit-code 0 image:latest":                Advisory,
+		"dockle --exit-code 1 image:latest":                Enforcing,
+		"docker run goodwithtech/dockle -c 1 image:latest": Enforcing,
+		"DOCKLE_EXIT_CODE=2 dockle image:latest":           Enforcing,
+	} {
+		verdicts := gradeFile(t, parser.NewGithubParser(), ".github/workflows/ci.yml", `
+on: pull_request
+jobs:
+  scan:
+    steps:
+      - run: `+run+`
+`)
+		assert.Equal(t, expected, verdicts["IaC Security"], run)
+	}
+	for input, expected := range map[string]Verdict{
+		"":  Enforcing,
+		"0": Advisory,
+		"1": Enforcing,
+	} {
+		verdicts := gradeFile(t, parser.NewGithubParser(), ".github/workflows/ci.yml", `
+on: pull_request
+jobs:
+  scan:
+    steps:
+      - uses: goodwithtech/dockle-action@main
+        with:
+          exit-code: "`+input+`"
+`)
+		assert.Equal(t, expected, verdicts["IaC Security"], input)
+	}
+}
+
 // Sobelow exits successfully on findings unless --exit is present, and
 // --config may change the exit behavior via .sobelow-conf.
 func TestSobelowExitFlagControlsGating(t *testing.T) {
