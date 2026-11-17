@@ -36,6 +36,20 @@ func TestRuleRegexPrecision(t *testing.T) {
 		shouldNotMatch []string
 	}{
 		{
+			ruleID: "dockle-rule",
+			shouldMatch: []string{
+				"dockle --exit-code 1 myapp:latest",
+				"docker run --rm goodwithtech/dockle -c 1 -l warn myapp:latest",
+				"dockle --input image.tar",
+				"goodwithtech/dockle-action@main",
+				"./bin/dockle -c 2 image:tag",
+			},
+			shouldNotMatch: []string{
+				"docker build -t myapp .", "hadolint Dockerfile", "dockless",
+				"mydockle --exit-code 1", "goodwithtech/dockle-action-extra@main",
+			},
+		},
+		{
 			ruleID: "sobelow-rule",
 			shouldMatch: []string{
 				"mix sobelow --exit", "mix sobelow --exit medium --skip", "mix sobelow --config",
