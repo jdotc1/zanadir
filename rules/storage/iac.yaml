@@ -1,4 +1,18 @@
 rules:
+  # The CLI only fails on findings with a nonzero exit code, whereas the
+  # official action defaults to exit-code: 1 and gates CI unless set to 0.
+  - id: "dockle-rule"
+    name: "Dockle"
+    applyOn: ["Artifact.Name", "Job.Package", "Job.Run"]
+    categories: ["IaC Security"]
+    regex: "(?i)(?:^|[\\s/])dockle(?:\\s|$)|goodwithtech/dockle(?:-action)?(?:[:@\\s]|$)"
+    weakenedWhen:
+      - input: "exit-code"
+        equals: "0"
+        verdict: "advisory"
+    exitsZeroUnless:
+      runMatches: "(?:--exit-code|(?:^|\\s)-c)[= ]+0*[1-9][0-9]*(?:\\s|$)|\\bDOCKLE_EXIT_CODE=0*[1-9][0-9]*(?:\\s|$)"
+
   - id: "checkov-rule"
     name: "Checkov"
     applyOn: ["Artifact.Name", "Job.Package", "Job.Run"]
