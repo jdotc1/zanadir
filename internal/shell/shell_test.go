@@ -52,6 +52,12 @@ func TestSwallowed(t *testing.T) {
 	runs := func(command string) bool { return strings.Contains(command, "gitleaks") }
 	for script, want := range map[string]bool{
 		"gitleaks detect || true":                                                  true,
+		`bash -c 'gitleaks detect --no-git; echo done' || true`:                     true,
+		`sh -c "gitleaks detect --no-git; echo done" || true`:                       true,
+		`bash -c 'gitleaks detect --no-git && echo done' || true`:                    true,
+		`bash -c 'gitleaks detect --no-git || echo done' || true`:                    true,
+		`bash -c 'gitleaks detect --no-git; echo done'`:                             false,
+		`gitleaks detect --no-git; echo done || true`:                               false,
 		"gitleaks detect || echo 'leaks found'":                                    true,
 		"if ! gitleaks detect; then echo found; fi":                                true,
 		"if gitleaks detect; then echo clean; fi":                                  true,

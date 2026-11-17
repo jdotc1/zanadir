@@ -210,7 +210,6 @@ func Passive(words []string) bool {
 }
 
 var (
-	statementEnd = regexp.MustCompile(`;|&&`)
 	// A failure handed to || is kept only if what follows fails again.
 	reraise    = regexp.MustCompile(`\bexit\s+(?:[1-9]|"?\$(?:\?|\{?[A-Za-z_]))|\bfalse\b|\breturn\s+[1-9]`)
 	conditions = set("if", "elif", "while", "until", "!")
@@ -239,6 +238,41 @@ type statement struct {
 	swallowed bool
 }
 
+// statementOperators finds command separators and failure handlers outside
+// quoted strings, escaped characters and command substitutions. A semicolon
+// inside `sh -c '...'` belongs to the inner script, not the outer command.
+func statementOperators(line string) (ends [][2]int, handlers []int) {
+	var quote byte
+	depth := 0
+	for i := 0; i < len(line); i++ {
+		c := line[i]
+		switch {
+		case c == '\\' && quote != '\'' && i+1 < len(line):
+			i++
+		case quote != 0:
+			if c == quote {
+				quote = 0
+			}
+		case c == '\'' || c == '"' || c == '`':
+			quote = c
+		case c == '$' && i+1 < len(line) && line[i+1] == '(':
+			depth++
+			i++
+		case c == ')' && depth > 0:
+			depth--
+		case depth == 0 && c == ';':
+			ends = append(ends, [2]int{i, i + 1})
+		case depth == 0 && i+1 < len(line) && c == '&' && line[i+1] == '&':
+			ends = append(ends, [2]int{i, i + 2})
+			i++
+		case depth == 0 && i+1 < len(line) && c == '|' && line[i+1] == '|':
+			handlers = append(handlers, i)
+			i++
+		}
+	}
+	return ends, handlers
+}
+
 // statements returns the script's statements that run something, each with
 // whether the script discards its failure there.
 func statements(script string) []statement {
@@ -252,11 +286,16 @@ func statements(script string) []statement {
 	textReraise, lineStart := lastReraise(text), 0
 	for _, line := range strings.Split(text, "\n") {
 		lineReraise, start, or := lastReraise(line), 0, -1
-		for _, end := range append(statementEnd.FindAllStringIndex(line, -1), []int{len(line), len(line)}) {
+		ends, handlers := statementOperators(line)
+		ends = append(ends, [2]int{len(line), len(line)})
+		for _, end := range ends {
 			if or < start {
 				or = len(line)
-				if i := strings.Index(line[start:], "||"); i >= 0 {
-					or = start + i
+				for _, handler := range handlers {
+					if handler >= start {
+						or = handler
+						break
+					}
 				}
 			}
 			handled := or < end[0]
