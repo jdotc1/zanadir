@@ -612,6 +612,51 @@ jobs:
 	}
 }
 
+func TestDockleCliAndActionExitCodes(t *testing.T) {
+	for run, expected := range map[string]Verdict{
+		"dockle myapp:latest":                         Advisory,
+		"dockle --exit-code 1 myapp:latest":           Enforcing,
+		"dockle -c 2 myapp:latest":                    Enforcing,
+		"dockle --exit-code 0 myapp:latest":           Advisory,
+		"DOCKLE_EXIT_CODE=1 dockle myapp:latest":      Enforcing,
+	} {
+		t.Run(run, func(t *testing.T) {
+			verdicts := gradeFile(t, parser.NewGithubParser(), ".github/workflows/dockle.yml", `
+on: pull_request
+jobs:
+  scan:
+    steps:
+      - run: `+run+`
+`)
+			assert.Equal(t, expected, verdicts["IaC Security"], run)
+		})
+	}
+
+	for _, tt := range []struct {
+		name, input string
+		expected Verdict
+	}{
+		{"default action", "", Enforcing},
+		{"action with zero exit code", "0", Advisory},
+		{"action with explicit one", "1", Enforcing},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			with := ""
+			if tt.input != "" {
+				with = "\n        with:\n          exit-code: '" + tt.input + "'"
+			}
+			verdicts := gradeFile(t, parser.NewGithubParser(), ".github/workflows/dockle.yml", `
+on: pull_request
+jobs:
+  scan:
+    steps:
+      - uses: goodwithtech/dockle-action@v1`+with+`
+`)
+			assert.Equal(t, tt.expected, verdicts["IaC Security"], tt.name)
+		})
+	}
+}
+
 // The kubeconform image run as a docker:// step enforces unless the step
 // may fail.
 func TestKubeconformDockerStepGradesEnforcing(t *testing.T) {
