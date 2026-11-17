@@ -11,6 +11,23 @@ rules:
         equals: "true"
         verdict: "advisory"
 
+  # Dockle's CLI reports findings without failing unless its exit code is
+  # enabled. The GitHub action has the opposite default (exit-code: 1).
+  - id: "dockle-rule"
+    name: "Dockle"
+    applyOn: ["Artifact.Name", "Job.Package", "Job.Run"]
+    categories: ["IaC Security"]
+    regex: "(?i)(?:^|[\\s/])dockle(?:\\s|$)|\\bgoodwithtech/dockle(?::[\\w.-]+|@sha256:[0-9a-f]+)?(?:\\s|$)|(?:^|[\\s/])goodwithtech/dockle-action(?:@|\\s|$)"
+    weakenedWhen:
+      - runMatches: "(?i)(?:--exit-code|-c)[= ]+0+(?:\\s|$)|\\bDOCKLE_EXIT_CODE=0+(?:\\s|$)"
+        verdict: "advisory"
+      - input: "exit-code"
+        equals: "0"
+        verdict: "advisory"
+    exitsZeroUnless:
+      runMatches: "(?i)(?:--exit-code|-c)[= ]+0*[1-9][0-9]*(?:\\s|$)|\\bDOCKLE_EXIT_CODE=0*[1-9][0-9]*(?:\\s|$)"
+      unknownWhen: "(?i)(?:--exit-code|-c)[= ]+\\$|\\bDOCKLE_EXIT_CODE=\\$"
+
   - id: "tfsec-rule"
     name: "tfsec"
     applyOn: ["Artifact.Name", "Job.Package", "Job.Run"]

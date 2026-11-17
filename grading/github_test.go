@@ -275,6 +275,66 @@ jobs:
 	}
 }
 
+func TestDockleCLIFailOnFindingFlagControlsGrading(t *testing.T) {
+	for run, expected := range map[string]Verdict{
+		"dockle myapp:latest":                       Advisory,
+		"dockle --exit-code 0 myapp":                Advisory,
+		"dockle --exit-code=1 myapp":                Enforcing,
+		"dockle -c 2 --input image.tar":             Enforcing,
+		"docker run goodwithtech/dockle -c 1 myapp": Enforcing,
+	} {
+		verdicts := gradeFile(t, parser.NewGithubParser(), ".github/workflows/ci.yml", `
+on: pull_request
+jobs:
+  scan:
+    steps:
+      - run: `+run+`
+`)
+		assert.Equal(t, expected, verdicts["IaC Security"], run)
+	}
+}
+
+func TestDockleActionExitCodeDefaultsToEnforcing(t *testing.T) {
+	for input, expected := range map[string]Verdict{
+		"":                        Enforcing,
+		"0":                       Advisory,
+		"1":                       Enforcing,
+		"${{ inputs.exit_code }}": Unknown,
+	} {
+		withInput := ""
+		if input != "" {
+			withInput = "\n        with:\n          exit-code: '" + input + "'"
+		}
+		verdicts := gradeFile(t, parser.NewGithubParser(), ".github/workflows/ci.yml", `
+on: pull_request
+jobs:
+  scan:
+    steps:
+      - uses: goodwithtech/dockle-action@v1`+withInput+`
+`)
+		assert.Equal(t, expected, verdicts["IaC Security"], input)
+	}
+}
+
+func TestDockleEnvironmentExitCodeControlsGrading(t *testing.T) {
+	for exitCode, expected := range map[string]Verdict{
+		"0":                       Advisory,
+		"1":                       Enforcing,
+		"${{ inputs.exit_code }}": Unknown,
+	} {
+		verdicts := gradeFile(t, parser.NewGithubParser(), ".github/workflows/ci.yml", `
+on: pull_request
+jobs:
+  scan:
+    steps:
+      - run: dockle myapp:latest
+        env:
+          DOCKLE_EXIT_CODE: '`+exitCode+`'
+`)
+		assert.Equal(t, expected, verdicts["IaC Security"], exitCode)
+	}
+}
+
 // Sobelow exits successfully on findings unless --exit is present, and
 // --config may change the exit behavior via .sobelow-conf.
 func TestSobelowExitFlagControlsGating(t *testing.T) {
@@ -592,11 +652,11 @@ jobs:
 
 func TestPolarisAuditGradesExitCodeSettings(t *testing.T) {
 	for run, expected := range map[string]Verdict{
-		"polaris audit --audit-path deploy/": Advisory,
-		"polaris audit --set-exit-code-on-danger --audit-path deploy/": Enforcing,
-		"polaris audit --set-exit-code-on-danger=true": Enforcing,
-		"polaris audit --set-exit-code-below-score=90": Enforcing,
-		"polaris audit --set-exit-code-on-danger=false": Advisory,
+		"polaris audit --audit-path deploy/":                                Advisory,
+		"polaris audit --set-exit-code-on-danger --audit-path deploy/":      Enforcing,
+		"polaris audit --set-exit-code-on-danger=true":                      Enforcing,
+		"polaris audit --set-exit-code-below-score=90":                      Enforcing,
+		"polaris audit --set-exit-code-on-danger=false":                     Advisory,
 		"polaris audit --set-exit-code-below-score ${{ inputs.min_score }}": Unknown,
 	} {
 		t.Run(run, func(t *testing.T) {
@@ -1648,11 +1708,11 @@ func TestTerraformDocsActionFailOnDiff(t *testing.T) {
 // check-jsonschema validates JSON, YAML, and TOML schemas and exits 1 on failure.
 func TestCheckJsonschemaGradesCorrectly(t *testing.T) {
 	for run, expected := range map[string]Verdict{
-		"check-jsonschema --builtin-schema vendor.dependabot .github/dependabot.yml":          Enforcing,
-		"uvx check-jsonschema --schemafile schema.json data.json":                             Enforcing,
-		"check-jsonschema --disable-formats '*' --schemafile schema.json data.json":          Enforcing,
-		"check-github-workflows":                                                              Enforcing,
-		"check-dependabot":                                                                    Enforcing,
+		"check-jsonschema --builtin-schema vendor.dependabot .github/dependabot.yml": Enforcing,
+		"uvx check-jsonschema --schemafile schema.json data.json":                    Enforcing,
+		"check-jsonschema --disable-formats '*' --schemafile schema.json data.json":  Enforcing,
+		"check-github-workflows": Enforcing,
+		"check-dependabot":       Enforcing,
 		"check-jsonschema --builtin-schema vendor.dependabot .github/dependabot.yml || true": Advisory,
 	} {
 		verdicts := gradeFile(t, parser.NewGithubParser(), ".github/workflows/ci.yml", `

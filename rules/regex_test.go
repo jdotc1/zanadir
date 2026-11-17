@@ -799,6 +799,19 @@ func TestRuleRegexPrecision(t *testing.T) {
 			shouldNotMatch: []string{"checkovx", "mycheckov"},
 		},
 		{
+			ruleID: "dockle-rule",
+			shouldMatch: []string{
+				"dockle --exit-code 1 myapp:latest", "dockle --input image.tar",
+				"docker run --rm goodwithtech/dockle -c 1 -l warn myapp:latest",
+				"docker run goodwithtech/dockle:v0.4.0 myapp:latest",
+				"./bin/dockle --exit-code=1 myapp", "goodwithtech/dockle-action@main",
+			},
+			shouldNotMatch: []string{
+				"docker build -t myapp .", "hadolint Dockerfile", "dockless",
+				"mydockle --exit-code 1", "goodwithtech/dockle-action-extra@v1",
+			},
+		},
+		{
 			ruleID:         "tfsec-rule",
 			shouldMatch:    []string{"tfsec .", "aquasecurity/tfsec-action"},
 			shouldNotMatch: []string{"tfsecure", "mytfsec"},
