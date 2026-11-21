@@ -36,6 +36,18 @@ func TestRuleRegexPrecision(t *testing.T) {
 		shouldNotMatch []string
 	}{
 		{
+			ruleID: "spotbugs-rule",
+			shouldMatch: []string{
+				"mvn spotbugs:check", "./mvnw -B verify spotbugs:check",
+				"mvn spotbugs:verify", "./gradlew spotbugsMain",
+				"gradle spotbugsMain spotbugsTest", "gradle --quiet spotbugsTest",
+			},
+			shouldNotMatch: []string{
+				"mvn spotbugs:spotbugs", "mvn spotbugs:gui", "mvn verify",
+				"./gradlew build", "mvn spotbugs:checkmate", "gradle spotbugsMainReport",
+			},
+		},
+		{
 			ruleID: "sobelow-rule",
 			shouldMatch: []string{
 				"mix sobelow --exit", "mix sobelow --exit medium --skip", "mix sobelow --config",
