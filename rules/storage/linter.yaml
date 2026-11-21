@@ -251,6 +251,15 @@ rules:
     categories: ["Linter"]
     regex: "(?i)\\b(?:ktlint(?:check)?|detekt)\\b"
 
+  # SpotBugs only gates when Maven runs check/verify or Gradle runs
+  # spotbugsMain/spotbugsTest. The spotbugs/report and GUI goals do not fail
+  # CI on findings, and a plain build or verify has no known SpotBugs binding.
+  - id: "spotbugs-rule"
+    name: "SpotBugs"
+    applyOn: ["Job.Run"]
+    categories: ["Linter"]
+    regex: "(?im)(?:^|[;&|][ \\t]*)(?:\\S*/)?mvnw?(?:\\.cmd)?[^\\n;|&]*[ \\t]spotbugs:(?:check|verify)(?:[ \\t]|$)|(?:^|[;&|][ \\t]*)(?:\\S*/)?gradle(?:w)?(?:\\.bat)?[^\\n;|&]*[ \\t]spotbugs(?:Main|Test)(?:[ \\t]|$)"
+
   - id: "checkstyle-rule"
     name: "Checkstyle"
     applyOn: ["Artifact.Name", "Job.Package", "Job.Run"]
